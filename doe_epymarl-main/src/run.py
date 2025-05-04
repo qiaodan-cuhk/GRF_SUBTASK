@@ -67,6 +67,7 @@ def run(_run, _config, _log):
     logger.setup_sacred(_run)
 
     # Run and train
+
     run_sequential(args=args, logger=logger)
 
     # Clean up after finishing

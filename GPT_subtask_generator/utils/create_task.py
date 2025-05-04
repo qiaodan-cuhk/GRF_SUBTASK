@@ -15,9 +15,12 @@ def create_task(root_dir, task, layer, response_id, response_r_id, num_agents, g
     data["env_args"]["num_agents"] = num_agents
     data["env_args"]["map_name"] = f'scenario_layer{layer}_decomposition{response_id}_subtask{group_id}'
     data["env_args"]["rewards"] = f'scoring, reward_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{iter}_sample{response_r_id}'
-    # data["env_args"]["rewards"] = 'scoring, reward_test'
 
-    # data["t_max"] = 200
+
+    # 这两行正常是注释掉的，这里为了测试test加回来
+    data["env_args"]["rewards"] = 'scoring, reward_test'
+    data["t_max"] = 2000
+    
     
     # Write the new YAML file
     with open(output_file, 'w') as new_yamlfile:

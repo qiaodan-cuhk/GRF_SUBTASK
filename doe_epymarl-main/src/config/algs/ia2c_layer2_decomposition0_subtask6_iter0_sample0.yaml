@@ -42,6 +42,6 @@ standardise_returns: false
 standardise_rewards: true
 t_max: 500000
 target_update_interval_or_tau: 0.01
-time_stamp: 0430_ia2c
+time_stamp: 0504_ia2c
 use_doe: false
 use_rnn: true

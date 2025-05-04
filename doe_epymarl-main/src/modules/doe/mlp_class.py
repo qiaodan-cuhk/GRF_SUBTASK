@@ -170,7 +170,7 @@ class MLPClassifier:
         """
         if not os.path.exists(buffer_path):
             raise FileNotFoundError(f"Buffer file not found at {buffer_path}")
-        exp_buffers = torch.load(os.path.join(buffer_path))
+        exp_buffers = torch.load(os.path.join(buffer_path), weights_only=False)
 
         # 考虑有时候用episode data而不是transitions,getattr
         transition_data = exp_buffers.transition_data

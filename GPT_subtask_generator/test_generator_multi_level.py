@@ -100,25 +100,38 @@ def config_copy(config):
         return deepcopy(config)
 
 
+
 def merge_doe_cls(groups, n_agents, role_list, doe_path, merge_doe_name, max_reward_code_path_for_each_group):
-    # 初始化合并后的分类器
+    """
+    Func:
+    加载并合并所有groups的doe classifier为一个新的doe cls
+
+    Params:
+    groups: dict - 提供分组id
+    n_agents: int - 合并后团队总 agents 数量
+    role_list: list - 合并后任务分工 # [0, 0, 1, 1, 2]
+    doe_path: dir - 存储路径  # f'GRF_SUBTASK/doe_epymarl-main/results/buffers/gfootball/Time'
+    merge_doe_name: dir - 存储合并后doe cls路径 # f"doe_'template_config_name'_layer'layer'_decomposition'decompose_id'_subtask{group_id}_iter{iter_id}_sample{sample_id}_merged"
+    max_reward_code_path_for_each_group: dir - 替换py为pt，指定load上一层的doe cls
+
+    Outputs:
+    合并后的 doe cls file: f'{doe_path}/{merge_doe_name}.pt')
+    """
+
     merged_classifier = None
     merge_id = 0
 
-    # 遍历每个组，加载对应的 DoE 分类器
     for group in groups:
-        # 构建文件路径, 0_classifier.pt
         group_id = group["group_number"] - 1
         max_reward_code_path = max_reward_code_path_for_each_group[f"group{group_id}"].replace("reward", "cls").replace(
             ".py", ".pt")
         classifier_path = f"{doe_path}/{max_reward_code_path}"
 
-        # 加载分类器
+        # 加载上一层训练好的分类器
         # classifier_i = torch.load(classifier_path, weights_only=True)
         classifier_i = torch.load(classifier_path)
 
-        # 创建初始化一个 merged cls，因为load可以直接加载原来的类的所有属性，我们只需要扩展classifier_i的mlps尺寸，更新 self.n_agents即可
-        # 避免重新指定各种网络参数
+        # 创建初始化一个 n agents merged cls，load cls 避免重新指定各种网络参数
         if merged_classifier is None:
             # merged_classifier = doe_classifier_config_loader(n_agents, merge_cfg, doe_path, load_mode='merge')
             merged_classifier = copy.deepcopy(classifier_i)
@@ -127,21 +140,17 @@ def merge_doe_cls(groups, n_agents, role_list, doe_path, merge_doe_name, max_rew
 
             # for key in vars(merged_classifier).keys():
             #     print(key)
-            # 扩展 lr 和 mlps 的数量
+
+            # 扩展 lr 和 mlps 的数量，创建 n_agents list mlps
             merged_classifier["learning_rates"] = [merged_classifier["learning_rates"][0]] * n_agents
             merged_classifier["mlps"] = [merged_classifier["mlps"][0]] * n_agents
 
-        # # 确保当前分类器的 mlps 列表长度与合并后的代理数量一致
-        # assert classifier.n_agents == len(classifier1.mlps) + len(classifier2.mlps)
-
-        # 合并历史分类器的参数到当前分类器中
+        # 加载历史分类器的参数到当前分类器id中
         for doe_i in classifier_i["mlps"]:
             merged_classifier["mlps"][merge_id].load_state_dict(doe_i.state_dict())
             merge_id += 1
 
     assert merge_id == n_agents
-    # 保存合并后的分类器
-    print(merged_classifier)
     torch.save(merged_classifier, f'{doe_path}/{merge_doe_name}.pt')
 
 
@@ -154,7 +163,21 @@ def merge_doe_cls(groups, n_agents, role_list, doe_path, merge_doe_name, max_rew
 #     else:
 #         return data
 
-def train_merge_team(groups, is_doe, layer, decompose_id, group_id, iter_id, sample_id, buffer_dir, max_reward_code_path_for_each_group, Time, task_env, suffix, rl_runs):
+def train_merge_team(groups,
+                     is_doe,
+                     layer,
+                     decompose_id,
+                     group_id,
+                     iter_id,
+                     sample_id,
+                     buffer_dir,
+                     max_reward_code_path_for_each_group,
+                     Time,
+                     task_env,
+                     suffix,
+                     rl_runs
+                     ):
+
     team_structure = {
         "total_members": 0,
         "num_subteams": len(groups),
@@ -168,36 +191,34 @@ def train_merge_team(groups, is_doe, layer, decompose_id, group_id, iter_id, sam
     for group in groups:
         cur_group_id = group["group_number"] - 1
         num_agents = group["number_of_agents"]
-
         # 更新总成员数量
         team_structure["total_members"] += num_agents
-
         # 为每个任务分配队员 ID
         task_assignments = {
             "task": f"goal_{cur_group_id}",
             "member_ids": list(range(current_id, current_id + num_agents))
         }
-
         # 更新当前 ID
         current_id += num_agents
-
         # 将任务分配信息添加到队伍结构中
         team_structure["task_assignments"][f"group_{cur_group_id}"] = task_assignments
 
-    # {
-    #     "total_members": 8,
-    #     "num_subteams": 2,
-    #     "task_assignments": {
-    #         "group_1": {
-    #             "task": "攻防训练",
-    #             "member_ids": [0, 1, 2, 3, 4]
-    #         },
-    #         "group_2": {
-    #             "task": "进攻训练",
-    #             "member_ids": [5, 6, 7]
-    #         },
-    #     }
-    # }
+    """
+    {
+        "total_members": 8,
+        "num_subteams": 2,
+        "task_assignments": {
+            "group_1": {
+                "task": "攻防训练",
+                "member_ids": [0, 1, 2, 3, 4]
+            },
+            "group_2": {
+                "task": "进攻训练",
+                "member_ids": [5, 6, 7]
+            },
+        }
+    }
+    """
 
     role_list = []
     # 初始化任务 ID 计数器
@@ -223,14 +244,17 @@ def train_merge_team(groups, is_doe, layer, decompose_id, group_id, iter_id, sam
         if task_name not in role_ids:
             role_ids[task_name] = []
         role_ids[task_name].append(agent_id)
-    # role_ids:
-    #   "defence":
-    #   - 0
-    #   - 1
-    #   - 2
-    #   "attack":
-    #   - 3
-    #   - 4
+    """
+    role_ids:
+      "defence":
+      - 0
+      - 1
+      - 2
+      "attack":
+      - 3
+      - 4
+    """
+
 
     """
     To LZH:
@@ -310,6 +334,8 @@ def train_merge_team(groups, is_doe, layer, decompose_id, group_id, iter_id, sam
     merge_cfg_doe_params = template_data["doe_classifier_cfg"]
     merge_doe_cls(groups, team_structure["total_members"], role_list, buffer_dir, merged_doe_name,
                   max_reward_code_path_for_each_group)
+
+    """一个问题，如果多层分解，是否需要再根据本层的buffer去训练一个新的本层任务的doe？用于下一层"""
 
     """本来考虑merge buffer再用于train doe cls，现在通过修改run中的加载doe逻辑，直接在每次训练中save cls和merge cls，不用再对齐buffer数据维度"""
     # # 处理buffer合并，用于doe training
@@ -1315,7 +1341,7 @@ if __name__ == "__main__":
     alg_cfg = "ia2c"
     task_env = "gfootball"
     rl_runs = []
-    Time = "0430_ia2c"
+    Time = "0504_ia2c"
 
     TIMEOUT = 30
     # 如果是最底层，不用doe
@@ -1326,8 +1352,11 @@ if __name__ == "__main__":
                 group_id, iter=0, suffix=suffix)
     create_train_cfg(CONFIG_ALGS_DIR, Time, alg_cfg, layer, response_id, response_r_id,
                      n_agents, group_id, iter=0)
+    
     # Execute the python file with flags
     rl_filepath = f"{OUTPUT_DIR}/gfootball{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}.txt"
+    
+    
     with open(rl_filepath, 'w') as f:
         script_path = f'{SRC_DIR}/main.py'
         params = [
@@ -1335,6 +1364,8 @@ if __name__ == "__main__":
             f'--config={alg_cfg}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
             f'--env-config={task_env}{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
         ]
+        # import sys
+        # sys.path.append('/data/qiaodan/projects/GRF_SUBTASK/gfootball')
         process = subprocess.Popen(params)
 
         # 获取文件的初始修改时间
@@ -1373,6 +1404,8 @@ if __name__ == "__main__":
     create_task(CONFIG_ENVS_DIR, task_env, layer, response_id, response_r_id,
                 n_agents,
                 group_id, iter=0, suffix=suffix)
+    
+    # reward = checkpoint, maps=5_vs_5
 
     child_tasks = [
         {"group_number": 7,

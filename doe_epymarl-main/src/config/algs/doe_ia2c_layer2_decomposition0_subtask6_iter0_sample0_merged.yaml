@@ -11,7 +11,7 @@ critic_type: ac_critic
 decomposition_id: 0
 doe_classifier_cfg:
   doe_type: mlp
-  load_doe_buffer_path: /home/zihao/zihao/PycharmProjects/GRF_SUBTASK-0423/doe_epymarl-main/results/buffers/gfootball/0430_ia2c
+  load_doe_buffer_path: /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/buffers/gfootball/0504_ia2c
   load_doe_name: doe_ia2c_layer2_decomposition0_subtask6_iter0_sample0_merged.pt
   load_mode: train
   mlp:
@@ -51,6 +51,6 @@ standardise_returns: false
 standardise_rewards: true
 t_max: 500000
 target_update_interval_or_tau: 0.01
-time_stamp: 0430_ia2c
+time_stamp: 0504_ia2c
 use_doe: true
 use_rnn: true
