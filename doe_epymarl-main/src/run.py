@@ -146,10 +146,10 @@ def run_sequential(args, logger):
 
 
     # 如果要使用doe，那么加载对应agent的doe cls，并add到mac、learner
-    # doe cls的所有函数都有buffer path，存储和加载都是通过 buffer path + save/load name.pt
-    # buffer path等于所有doe相关的文件夹，可以改名字
+    # layer_tmp_dir 就是本层的所有pt文件根目录
     if hasattr(args, 'doe_classifier_cfg'):
-        load_doe_buffer_path = args.doe_classifier_cfg["load_doe_buffer_path"]
+        layer_tmp_dir = args.doe_classifier_cfg["layer_tmp_dir"]
+        # GRF_SUBTASK/doe_epymarl-main/results/gfootball/Time
 
 
     if args.use_doe:
@@ -168,7 +168,7 @@ def run_sequential(args, logger):
         doe_classifier = doe_classifier_config_loader(
             n_agents=args.n_agents,
             cfg=args.doe_classifier_cfg,  # 本来是args.get("doe_classifier_cfg")，这里args是namespace形式
-            buffer_path = load_doe_buffer_path, # merge buffer load path,
+            buffer_path = layer_tmp_dir, # merge buffer load path,
             load_mode='load'
         )
 
@@ -234,6 +234,9 @@ def run_sequential(args, logger):
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
+    # 用于调试
+    args.t_max = 2000
+
     while runner.t_env <= args.t_max:
         # Run for a whole episode at a time
         episode_batch = runner.run(test_mode=False)
@@ -274,9 +277,13 @@ def run_sequential(args, logger):
             or model_save_time == 0
         ):
             model_save_time = runner.t_env
-            save_path = os.path.join(
-                args.local_results_path, "models", args.unique_token, str(runner.t_env)
-            )
+            save_path = os.path.join(dirname(dirname(abspath(__file__))),
+                                     args.local_results_path, "models",
+                                     args.unique_token,
+                                     str(runner.t_env))
+            # 这个目录目前有点奇怪 '/data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/models/ia2c_seed114514_scenario_layer2_decomposition0_subtask6_2025-05-05 00:15:46.173157/150'
+            # 需要改成 GRF_SUBTASK/doe_epymarl-main/results/gfootball/Time/training_ckpts
+            
             # "results/models/{}".format(unique_token)
             os.makedirs(save_path, exist_ok=True)
             logger.console_logger.info("Saving models to {}".format(save_path))
@@ -305,14 +312,19 @@ def run_sequential(args, logger):
     """ Save buffers for DoE Classifier """
     if args.save_buffer:
         # 创建在训练结束时存储buffer用于DoE的路径
-        # buffer_save_path = load_doe_buffer_path + new exp name
-        buffer_save_path = os.path.join(dirname(dirname(abspath(__file__))), args.local_results_path, "buffers", args.env, args.time_stamp)
-        os.makedirs(buffer_save_path, exist_ok=True)
+        # buffer_save_path = layer_tmp_dir + new exp name
+        # buffer_save_path = os.path.join(dirname(dirname(abspath(__file__))), args.local_results_path, "buffers", args.env, args.time_stamp)
+        # buffer_save_path = layer_tmp_dir
+        # os.makedirs(layer_tmp_dir, exist_ok=True)
 
         """名字需要重新考虑 group id 方便后续 merge"""
-        buffer_save_path_curr = buffer_save_path + f'/buffer_layer{args.layer_id}_decomposition{args.decomposition_id}_subtask{args.group_id}_iter{args.iter_id}_sample{args.sample_id}.pt'
-        th.save(buffer.data, buffer_save_path_curr)
-        logger.console_logger.info(f"Save buffer to {buffer_save_path} for DoE Classifier")
+        save_buffer_file_name = f'/buffer_layer{args.layer_id}_decomposition{args.decomposition_id}_subtask{args.group_id}_iter{args.iter_id}_sample{args.sample_id}.pt'
+
+        # 将本stage的buffer存储名字传入 doe cls cfg，用于下面的新的cls训练
+        args.doe_classifier_cfg["save_buffer_file_name"] = save_buffer_file_name
+        save_buffer_file_path = layer_tmp_dir + save_buffer_file_name
+        th.save(buffer.data, save_buffer_file_path)
+        logger.console_logger.info(f"Save buffer to {layer_tmp_dir} for DoE Classifier")
         # 目前在from config train中，写死的buffer名字为 load bufferpath+buffer.pt，需要改命名
 
     """ Train and Save DoE Classifier """
@@ -321,11 +333,11 @@ def run_sequential(args, logger):
         doe_classifier = doe_classifier_config_loader(
             n_agents=args.n_agents,
             cfg=args.doe_classifier_cfg,  # 本来是args.get("doe_classifier_cfg")，这里args是namespace形式
-            buffer_path = buffer_save_path_curr, # 使用当前保存的 buffer file
+            buffer_path = layer_tmp_dir, # 使用当前保存的 buffer dir
             load_mode='train'
         )
         # from config设置了，如果有save cls，就会按照save name保存cls
-        logger.console_logger.info(f"Save buffer to {buffer_save_path} for DoE Classifier")
+        logger.console_logger.info(f"Save new doe cls to {layer_tmp_dir} for DoE Classifier")
         
 
     runner.close_env()

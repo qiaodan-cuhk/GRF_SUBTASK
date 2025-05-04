@@ -1,5 +1,6 @@
 
-
+地图路径问题
+直接导向了lib/gfootball，所以把scenarios文件复制过去就好了
 
 create_task.py lin 18
 
@@ -26,3 +27,10 @@ save_model_interval: 50000 # Save models after this many timesteps
 修改为
 save_model: True # Save the models to disk
 save_model_interval: 1000 # Save models after this many timesteps
+
+
+run.py line 237
+新增一个指定500000变为2000 steps
+
+
+TIME 30 改成了 600 in test
