@@ -1,6 +1,6 @@
 env: gfootball
 env_args:
-  map_name: scenario_layer2_decomposition0_subtask7
+  map_name: scenario_layer2_decomposition0_subtask8
   num_agents: 1
   representation: simple115
   rewards: scoring, reward_test

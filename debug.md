@@ -34,3 +34,18 @@ run.py line 237
 
 
 TIME 30 改成了 600 in test
+
+
+
+
+TODO
+
+run py
+line 286 目前存储ckpt路径奇怪
+save_path
+'/data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/models/ia2c_seed114514_scenario_layer2_decomposition0_subtask6_2025-05-05 11:45:34.649414/150'
+
+line 215 目前并未成功load policy
+因为ckpt path是 ""
+而且需要解决team merged policy的问题，建议都存到decomposition/group文件夹下，但是分别命名为init policy和普通存储的final policy。
+final policy用于在下一层target task训练时load，组合成init policy

@@ -7,7 +7,7 @@ critic_type: ac_critic
 decomposition_id: 0
 doe_classifier_cfg:
   doe_type: mlp
-  layer_tmp_dir: /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0505_ia2c/decomposition0/group7
+  layer_tmp_dir: /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0505_ia2c/decomposition0/group8
   load_doe_buffer_path: GRF_SUBTASK/doe_epymarl-main/results/buffer/grf
   load_doe_name: load_mlp_classifier.pt
   load_mode: train
@@ -21,9 +21,9 @@ doe_classifier_cfg:
     task:
     - 0
   save_classifier: true
-  save_doe_name: cls_layer2_decomposition0_subtask7_iter0_sample0.pt
+  save_doe_name: cls_layer2_decomposition0_subtask8_iter0_sample0.pt
 entropy_coef: 0.001
-group_id: 7
+group_id: 8
 hidden_dim: 128
 iter_id: 0
 layer_id: 2

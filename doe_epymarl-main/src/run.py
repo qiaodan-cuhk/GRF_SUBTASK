@@ -149,6 +149,7 @@ def run_sequential(args, logger):
     # layer_tmp_dir 就是本层的所有pt文件根目录
     if hasattr(args, 'doe_classifier_cfg'):
         layer_tmp_dir = args.doe_classifier_cfg["layer_tmp_dir"]
+        os.makedirs(layer_tmp_dir, exist_ok=True)
         # GRF_SUBTASK/doe_epymarl-main/results/gfootball/Time
 
 
@@ -184,7 +185,7 @@ def run_sequential(args, logger):
 
     if args.use_cuda:
         learner.cuda()
-
+    # 目前这个ckpt path为空，导致learner没有load model
     if args.checkpoint_path != "":
         timesteps = []
         timestep_to_load = 0
@@ -208,9 +209,9 @@ def run_sequential(args, logger):
         else:
             # choose the timestep closest to load_step
             timestep_to_load = min(timesteps, key=lambda x: abs(x - args.load_step))
-
+        # !!!! 这个地方要改成加载的ckpt的路径和文件夹
         model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
-
+    
         logger.console_logger.info("Loading model from {}".format(model_path))
         learner.load_models(model_path)
         runner.t_env = timestep_to_load
@@ -290,7 +291,7 @@ def run_sequential(args, logger):
 
             # learner should handle saving/loading -- delegate actor save/load to mac,
             # use appropriate filenames to do critics, optimizer states
-            learner.save_models(save_path)
+            learner.save_models(save_path)   # 这是训练过程的中间ckpt
 
             if args.use_wandb and args.wandb_save_model:
                 wandb_save_dir = os.path.join(
@@ -308,6 +309,10 @@ def run_sequential(args, logger):
             logger.log_stat("episode", episode, runner.t_env)
             logger.print_recent_stats()
             last_log_T = runner.t_env
+
+    """ Save training final models """
+    learner.save_models(layer_tmp_dir)   # 这是训练最终ckpt
+    logger.console_logger.info(f"Save final model ckpt to {layer_tmp_dir}")
     
     """ Save buffers for DoE Classifier """
     if args.save_buffer:
@@ -318,17 +323,18 @@ def run_sequential(args, logger):
         # os.makedirs(layer_tmp_dir, exist_ok=True)
 
         """名字需要重新考虑 group id 方便后续 merge"""
-        save_buffer_file_name = f'/buffer_layer{args.layer_id}_decomposition{args.decomposition_id}_subtask{args.group_id}_iter{args.iter_id}_sample{args.sample_id}.pt'
+        save_buffer_file_name = f'buffer_layer{args.layer_id}_decomposition{args.decomposition_id}_subtask{args.group_id}_iter{args.iter_id}_sample{args.sample_id}.pt'
 
         # 将本stage的buffer存储名字传入 doe cls cfg，用于下面的新的cls训练
         args.doe_classifier_cfg["save_buffer_file_name"] = save_buffer_file_name
-        save_buffer_file_path = layer_tmp_dir + save_buffer_file_name
+        save_buffer_file_path = os.path.join(layer_tmp_dir, save_buffer_file_name)
         th.save(buffer.data, save_buffer_file_path)
         logger.console_logger.info(f"Save buffer to {layer_tmp_dir} for DoE Classifier")
         # 目前在from config train中，写死的buffer名字为 load bufferpath+buffer.pt，需要改命名
 
     """ Train and Save DoE Classifier """
     # 直接用上面 buffer save path curr 的位置的 buffer_id.pt 来train
+    # 这里要考虑一下merge以后的team doe cls，分配新的role_list
     if args.save_doe_cls:
         doe_classifier = doe_classifier_config_loader(
             n_agents=args.n_agents,
@@ -338,7 +344,7 @@ def run_sequential(args, logger):
         )
         # from config设置了，如果有save cls，就会按照save name保存cls
         logger.console_logger.info(f"Save new doe cls to {layer_tmp_dir} for DoE Classifier")
-        
+
 
     runner.close_env()
     logger.console_logger.info("Finished Training")

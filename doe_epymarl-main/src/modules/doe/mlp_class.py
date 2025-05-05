@@ -248,7 +248,7 @@ class MLPClassifier:
 
         # absolute_path = os.path.abspath(cfg.load_doe_name)
         absolute_path = os.path.join(buffer_path, cfg["load_doe_name"])
-        loaded_dict = torch.load(absolute_path)
+        loaded_dict = torch.load(absolute_path, weights_only=False)
         
         # sanity check
         if not isinstance(loaded_dict['mlps'], list) or not all(isinstance(mlp, torch.nn.Module) for mlp in loaded_dict['mlps']):
