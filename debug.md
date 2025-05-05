@@ -1,47 +1,44 @@
 
-地图路径问题
-直接导向了lib/gfootball，所以把scenarios文件复制过去就好了
+#### 1. 地图路径问题
+```from gfootball import``` 直接导向了```anaconda/lib/gfootball```，所以把scenarios文件复制过去就好了，只出现在dan的server上
 
-create_task.py lin 18
+#### 2. 临时缩小训练步骤
 
-# 这两行正常是注释掉的，这里为了测试test加回来
+源代码中这两行是注释掉的，这里为了测试test加速child训练临时加上
+
+```create_task.py lin 21-23```
+
 data["env_args"]["rewards"] = 'scoring, reward_test'
 data["t_max"] = 2000
 
+#### 3. torch.load 报错
+```torch.load(xxx)``` 在torch 2.6以后需要改成 ```torch.load(xxx, weight_only=False)```
 
-buffer.load 在torch 2.6以后改成 weight_only=False
+#### 4. 为了测试debug
+关闭并行环境启动，设置
+```parallel_runner.py``` 中 line 18 为 ```self.batch_size = 1```
 
-
-
-parallel runner line 18
-
-# 为了测试
-self.batch_size = 1
-
-
-default.yaml 修改
+#### 5. default.yaml 修改:
 
 原始为
+
 save_model: False # Save the models to disk
 save_model_interval: 50000 # Save models after this many timesteps
+
 修改为
+
 save_model: True # Save the models to disk
 save_model_interval: 1000 # Save models after this many timesteps
 
-
+#### 6. run.py 的改动（正式代码需要删除）
 run.py line 237
+
 新增一个指定500000变为2000 steps
 
 
-TIME 30 改成了 600 in test
+#### TODO
 
-
-
-
-TODO
-
-run py
-line 286 目前存储ckpt路径奇怪
+run.py line 286 目前存储ckpt路径奇怪
 save_path
 '/data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/models/ia2c_seed114514_scenario_layer2_decomposition0_subtask6_2025-05-05 11:45:34.649414/150'
 

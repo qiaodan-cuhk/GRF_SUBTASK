@@ -22,7 +22,6 @@ def create_task(root_dir, task, layer, response_id, response_r_id, num_agents, g
     data["env_args"]["rewards"] = 'scoring, reward_test'
     data["t_max"] = 2000
     
-    
     # Write the new YAML file
     with open(output_file, 'w') as new_yamlfile:
         yaml.safe_dump(data, new_yamlfile)
