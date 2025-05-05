@@ -254,14 +254,14 @@ def train_merge_team(groups,
     todo：读取child group的policy pth，合并得到新的policy并存储到本target task下作为init policy
 
     执行run.py
-        修改ckpt path不为""，以在训练初期 learner.load init policy
+        修改ckpt path不为""，以在训练初期 learner.load init team policy
         加载 merged doe name 这个cls，利用load模式的from config
         进行训练
-        训练结束后存储buffer到
+        训练结束后存储buffer到本层folder
+        todo：更改role_ids的list命名
         读取buffer进行新的cls训练，利用train模式的from config，存储为 save doe name，用于下一阶段训练
         存储final policy ckpt 到文件夹路径
 
-    
 
     """
 
@@ -297,11 +297,11 @@ def train_merge_team(groups,
         "num_subteams": 2,
         "task_assignments": {
             "group_1": {
-                "task": "攻防训练",
+                "task": "goal_1",
                 "member_ids": [0, 1, 2, 3, 4]
             },
             "group_2": {
-                "task": "进攻训练",
+                "task": "goal_2",
                 "member_ids": [5, 6, 7]
             },
         }
@@ -309,39 +309,33 @@ def train_merge_team(groups,
     """
 
     role_list = []
-    # 初始化任务 ID 计数器
-    task_id_counter = 0
+    # # 初始化任务 ID 计数器
+    # task_id_counter = 0
 
     # 遍历每个子团队，提取任务信息
     for group_key, group_info in team_structure["task_assignments"].items():
+        task_label = int(group_info["task"].split('_')[1])
         member_ids = group_info["member_ids"]
+        # 为每个成员添加对应的任务 ID,使用其group id
+        role_list.extend([task_label] * len(member_ids))
 
-        # 为每个成员添加对应的任务 ID
-        role_list.extend([task_id_counter] * len(member_ids))
+        # # 任务 ID 计数器加 1
+        # task_id_counter += 1
 
-        # 任务 ID 计数器加 1
-        task_id_counter += 1
-
+    # role_list = [6, 6, 7]
     # role_list = [0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2]，可用于指定merged doe的role ids
     # [attack attack defend]
 
     # 把团队角色信息转为role ids
     role_ids = {}
     for agent_id, role in enumerate(role_list):
-        task_name = list(team_structure["task_assignments"].values())[role]["task"]  # 获取子团队任务名称
+        # task_name = list(team_structure["task_assignments"].values())[role]["task"]  # 获取子团队任务名称
+        task_name = f"goal_{role}"
         if task_name not in role_ids:
             role_ids[task_name] = []
         role_ids[task_name].append(agent_id)
-    """
-    role_ids:
-      "defence":
-      - 0
-      - 1
-      - 2
-      "attack":
-      - 3
-      - 4
-    """
+        # role_ids:{"goal_6": [0], "goal_7": [1]}
+
 
 
     """
@@ -532,59 +526,59 @@ if __name__ == "__main__":
     # 如果是最底层，不用doe
     
     # 为了debug，暂时关掉
-    # for group_id in child_group_id:
-    #     logging.info(
-    #         f"Training for Decomposition {response_id} Layer{layer} Group{group_id} ")
-    #     # Create Task YAML file
-    #     create_task(CONFIG_ENVS_DIR, task_env, layer, response_id, response_r_id, n_agents,
-    #                 group_id, iter=0, suffix=suffix)
-    #     create_train_cfg(CONFIG_ALGS_DIR, Time, alg_cfg, layer, response_id, response_r_id,
-    #                     n_agents, group_id, iter=0)
+    for group_id in child_group_id:
+        logging.info(
+            f"Training for Decomposition {response_id} Layer{layer} Group{group_id} ")
+        # Create Task YAML file
+        create_task(CONFIG_ENVS_DIR, task_env, layer, response_id, response_r_id, n_agents,
+                    group_id, iter=0, suffix=suffix)
+        create_train_cfg(CONFIG_ALGS_DIR, Time, alg_cfg, layer, response_id, response_r_id,
+                        n_agents, group_id, iter=0)
         
-    #     # Execute the python file with flags
-    #     rl_filepath = f"{OUTPUT_DIR}/gfootball{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}.txt"
+        # Execute the python file with flags
+        rl_filepath = f"{OUTPUT_DIR}/gfootball{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}.txt"
         
         
-    #     with open(rl_filepath, 'w') as f:
-    #         script_path = f'{SRC_DIR}/main.py'
-    #         params = [
-    #             'python', '-u', script_path,
-    #             f'--config={alg_cfg}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
-    #             f'--env-config={task_env}{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
-    #         ]
-    #         # import sys
-    #         # sys.path.append('/data/qiaodan/projects/GRF_SUBTASK/gfootball')
-    #         # 底层任务需要修改这个Popen
-    #         # process = subprocess.Popen(params)
-    #         process = subprocess.Popen(params, stdout=f, stderr=f)
+        with open(rl_filepath, 'w') as f:
+            script_path = f'{SRC_DIR}/main.py'
+            params = [
+                'python', '-u', script_path,
+                f'--config={alg_cfg}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
+                f'--env-config={task_env}{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
+            ]
+            # import sys
+            # sys.path.append('/data/qiaodan/projects/GRF_SUBTASK/gfootball')
+            # 底层任务需要修改这个Popen
+            # process = subprocess.Popen(params)
+            process = subprocess.Popen(params, stdout=f, stderr=f)
 
-    #         # 获取文件的初始修改时间
-    #         while True:
-    #             initial_mtime = os.path.getmtime(rl_filepath)
-    #             initial_mtime = datetime.datetime.fromtimestamp(initial_mtime)  # 时间转为datetime格式
-    #             start_time = datetime.datetime.now()
-    #             delta_time = start_time - initial_mtime  # 时间差
-    #             delta_seconds = delta_time.total_seconds()  # 时间差转成秒
-    #             if delta_seconds > TIMEOUT:  # 如果文件更新时间大于30秒，重新启动程序
-    #                 print(
-    #                     f"Overtime：It seems that the training is stuck or finished, subprocess terminates")
-    #                 process.kill()  # 终止子进程
-    #                 break
-    #             # while process.poll() is None:  # 检查子进程是否还在运行
-    #             #     # 检查文件的最后修改时间
-    #             #     current_mtime = os.path.getmtime(rl_filepath)
-    #             #     # 如果文件超过了 1 分钟没有更新
-    #             #     if current_mtime == initial_mtime and (time.time() - start_time) > TIMEOUT:
-    #             #         print(f"Overtime：It seems that the training is stuck, subprocess terminates")
-    #             #         process.terminate()  # 终止子进程
-    #             #         break
-    #             # 等待一段时间后再检查
-    #             time.sleep(1)
+            # 获取文件的初始修改时间
+            while True:
+                initial_mtime = os.path.getmtime(rl_filepath)
+                initial_mtime = datetime.datetime.fromtimestamp(initial_mtime)  # 时间转为datetime格式
+                start_time = datetime.datetime.now()
+                delta_time = start_time - initial_mtime  # 时间差
+                delta_seconds = delta_time.total_seconds()  # 时间差转成秒
+                if delta_seconds > TIMEOUT:  # 如果文件更新时间大于30秒，重新启动程序
+                    print(
+                        f"Overtime：It seems that the training is stuck or finished, subprocess terminates")
+                    process.kill()  # 终止子进程
+                    break
+                # while process.poll() is None:  # 检查子进程是否还在运行
+                #     # 检查文件的最后修改时间
+                #     current_mtime = os.path.getmtime(rl_filepath)
+                #     # 如果文件超过了 1 分钟没有更新
+                #     if current_mtime == initial_mtime and (time.time() - start_time) > TIMEOUT:
+                #         print(f"Overtime：It seems that the training is stuck, subprocess terminates")
+                #         process.terminate()  # 终止子进程
+                #         break
+                # 等待一段时间后再检查
+                time.sleep(1)
 
-    #         process.wait()
-    #     # Modified the check of successful training
-    #     # block_until_training(rl_filepath, log_status=True, iter_num=iter, response_id=response_id)
-    #     rl_runs.append(process)
+            process.wait()
+        # Modified the check of successful training
+        # block_until_training(rl_filepath, log_status=True, iter_num=iter, response_id=response_id)
+        rl_runs.append(process)
 
 
 

@@ -336,6 +336,15 @@ def run_sequential(args, logger):
     # 直接用上面 buffer save path curr 的位置的 buffer_id.pt 来train
     # 这里要考虑一下merge以后的team doe cls，分配新的role_list
     if args.save_doe_cls:
+        # 训练结束，创建属于本subtask的role_ids用于训练cls, group id 作为本组role_ids的label
+        group_id = args.group_id
+        curr_role_ids = {f"goal_{group_id}": list(range(args.n_agents)) }
+        args.doe_classifier_cfg["role_ids"] = curr_role_ids
+
+        
+        # (0, ('goal_5', ['a' b c d e])) 对应 role list [0 0 0 0 0]
+        # (0, ('defence', ['alice', 'bob'])) 和 (1, ('attack', ['carol', 'dave']))
+
         doe_classifier = doe_classifier_config_loader(
             n_agents=args.n_agents,
             cfg=args.doe_classifier_cfg,  # 本来是args.get("doe_classifier_cfg")，这里args是namespace形式

@@ -49,3 +49,13 @@ line 215 目前并未成功load policy
 因为ckpt path是 ""
 而且需要解决team merged policy的问题，建议都存到decomposition/group文件夹下，但是分别命名为init policy和普通存储的final policy。
 final policy用于在下一层target task训练时load，组合成init policy
+
+
+
+doe的label和agent id要小心点，比如subtask 7 和 8 的合并顺序？
+两个team都是0-N
+
+注意 role list 作为MLP cls的train和load的label，检查这个label对超参数的影响
+
+
+注意doe需要检查，预测的state对应label判断条件换成是否等于当前group id，因为train时候的label 替换成了group id为准，load doe时直接加载classifier nn params
