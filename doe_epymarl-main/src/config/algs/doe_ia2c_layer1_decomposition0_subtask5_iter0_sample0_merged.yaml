@@ -7,11 +7,19 @@ batch_size_run: 10
 boost_ent_coef: 1.0
 boost_lr_coef: 1.0
 buffer_size: 10
+<<<<<<< HEAD
+=======
+checkpoint_path: /home/zihao/zihao/PycharmProjects/GRF_SUBTASK-tmp/doe_epymarl-main/results/gfootball/0506_ia2c_test_3/decomposition0/group5
+>>>>>>> collaborator/main
 critic_type: ac_critic
 decomposition_id: 0
 doe_classifier_cfg:
   doe_type: mlp
+<<<<<<< HEAD
   layer_tmp_dir: /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0505_ia2c/decomposition0/group5
+=======
+  layer_tmp_dir: /home/zihao/zihao/PycharmProjects/GRF_SUBTASK-tmp/doe_epymarl-main/results/gfootball/0506_ia2c_test_3/decomposition0/group5
+>>>>>>> collaborator/main
   load_doe_name: cls_layer1_decomposition0_subtask5_iter0_sample0_merged.pt
   load_mode: train
   mlp:
@@ -49,8 +57,14 @@ save_buffer: true
 save_doe_cls: true
 standardise_returns: false
 standardise_rewards: true
+<<<<<<< HEAD
 t_max: 500000
 target_update_interval_or_tau: 0.01
 time_stamp: 0505_ia2c
+=======
+t_max: 1000000
+target_update_interval_or_tau: 0.01
+time_stamp: 0506_ia2c_test_3
+>>>>>>> collaborator/main
 use_doe: true
 use_rnn: true

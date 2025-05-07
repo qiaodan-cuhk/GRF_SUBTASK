@@ -187,6 +187,7 @@ def run_sequential(args, logger):
         learner.cuda()
     # 目前这个ckpt path为空，导致learner没有load model
     if args.checkpoint_path != "":
+<<<<<<< HEAD
         timesteps = []
         timestep_to_load = 0
 
@@ -212,9 +213,41 @@ def run_sequential(args, logger):
         # !!!! 这个地方要改成加载的ckpt的路径和文件夹
         model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
     
+=======
+        # timesteps = []
+        # timestep_to_load = 0
+        #
+        # if not os.path.isdir(args.checkpoint_path):
+        #     logger.console_logger.info(
+        #         "Checkpoint directiory {} doesn't exist".format(args.checkpoint_path)
+        #     )
+        #     return
+        #
+        # # Go through all files in args.checkpoint_path
+        # for name in os.listdir(args.checkpoint_path):
+        #     full_name = os.path.join(args.checkpoint_path, name)
+        #     # Check if they are dirs the names of which are numbers
+        #     if os.path.isdir(full_name) and name.isdigit():
+        #         timesteps.append(int(name))
+        #
+        # if args.load_step == 0:
+        #     # choose the max timestep
+        #     timestep_to_load = max(timesteps)
+        # else:
+        #     # choose the timestep closest to load_step
+        #     timestep_to_load = min(timesteps, key=lambda x: abs(x - args.load_step))
+        # # !!!! 这个地方要改成加载的ckpt的路径和文件夹
+        # model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
+        #
+        # logger.console_logger.info("Loading model from {}".format(model_path))
+        # learner.load_models(model_path)
+        # runner.t_env = timestep_to_load
+
+        model_path = args.checkpoint_path
+>>>>>>> collaborator/main
         logger.console_logger.info("Loading model from {}".format(model_path))
         learner.load_models(model_path)
-        runner.t_env = timestep_to_load
+
 
         if args.evaluate or args.save_replay:
             runner.log_train_stats_t = runner.t_env
@@ -235,8 +268,13 @@ def run_sequential(args, logger):
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
+<<<<<<< HEAD
     # 用于调试
     args.t_max = 2000
+=======
+    # # 用于调试
+    # args.t_max = 2000
+>>>>>>> collaborator/main
 
     while runner.t_env <= args.t_max:
         # Run for a whole episode at a time

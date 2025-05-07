@@ -18,9 +18,15 @@ def create_task(root_dir, task, layer, response_id, response_r_id, num_agents, g
     data["env_args"]["rewards"] = f'scoring, reward_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{iter}_sample{response_r_id}'
 
 
+<<<<<<< HEAD
     # 这两行正常是注释掉的，这里为了测试test加回来
     data["env_args"]["rewards"] = 'scoring, reward_test'
     data["t_max"] = 2000
+=======
+    # # 这两行正常是注释掉的，这里为了测试test加回来
+    # data["env_args"]["rewards"] = 'scoring, reward_test'
+    # data["t_max"] = 2000
+>>>>>>> collaborator/main
     
     # Write the new YAML file
     with open(output_file, 'w') as new_yamlfile:
@@ -75,16 +81,28 @@ def create_train_cfg(root_dir, Time, algs_name, layer, response_id, response_r_i
     data["doe_classifier_cfg"]["save_doe_name"] = f"cls_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{iter}_sample{response_r_id}.pt"
 
     # 新增：本层实验的所有存储文件统一文件夹
+<<<<<<< HEAD
     layer_data_save_dir=f'~/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/{Time}/decomposition{response_id}/group{group_id}'
+=======
+    layer_data_save_dir=f'~/zihao/PycharmProjects/GRF_SUBTASK-tmp/doe_epymarl-main/results/gfootball/{Time}/decomposition{response_id}/group{group_id}'
+>>>>>>> collaborator/main
     layer_data_save_dir = os.path.expanduser(layer_data_save_dir)
     data["doe_classifier_cfg"]["layer_tmp_dir"] = layer_data_save_dir
 
 
+<<<<<<< HEAD
     # TODO
+=======
+    # TODO 这个函数只在最底层使用，不需要load policy，修改写在train_merge_team里
+>>>>>>> collaborator/main
     # load doe name
     # load doe buffer path
     # ckpt path 不要为空（目前是从default加载为空）
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> collaborator/main
 
     # Write the new YAML file
     with open(output_file, 'w') as new_yamlfile:

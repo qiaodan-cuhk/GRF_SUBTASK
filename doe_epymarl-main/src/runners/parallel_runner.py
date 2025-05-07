@@ -18,6 +18,9 @@ class ParallelRunner:
         # 为了测试
         self.batch_size = 1
 
+        # # 为了测试
+        # self.batch_size = 1
+
         # Make subprocesses for the envs
         self.parent_conns, self.worker_conns = zip(
             *[Pipe() for _ in range(self.batch_size)]

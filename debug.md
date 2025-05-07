@@ -35,6 +35,14 @@ run.py line 237
 
 新增一个指定500000变为2000 steps
 
+<<<<<<< HEAD
+=======
+#### 7. load actor/critic_init.th的改动
+注意这里merge的policy是将子任务的参数平均，得到的共享参数，除非修改doe_controller，但那又涉及到role assignment的问题
+
+#### 8. 固定长度one-hot的改动
+ac.py line50, basic controller.py line89, doe_controller.py line115
+>>>>>>> collaborator/main
 
 #### TODO
 
