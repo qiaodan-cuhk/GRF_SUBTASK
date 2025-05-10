@@ -455,20 +455,22 @@ def train_merge_team(groups,
     这里需要考虑加相对路径，修改 template file path 的位置，以及template config name 可以换成ia2c，作为基础参数模版，可以用于训练非doe的
     """
 
-    # 读取 ia2c_ns.yaml 作为模板,也可以用ia2c
-    template_config_name = 'ia2c'
+    # 读取 ia2c_ns.yaml 作为模板,保持param non sharing，之前用的ia2c
+    template_config_name = 'ia2c_ns'
     template_file_path = f'{SRC_DIR}/config/algs/{template_config_name}.yaml'
     with open(template_file_path, 'r', encoding='utf-8') as template_file:
         template_data = yaml.safe_load(template_file)
 
     # 修改模板数据以生成 doe_ia2c.yaml 格式
-    template_data['mac'] = "doe_mac"  # 修改 mac
+    # template_data['mac'] = "doe_mac"  # 修改 mac
+    template_data['mac'] = "non_shared_doe_mac"  # 使用ns doe mac
     template_data['target_update_interval_or_tau'] = 0.01  # 修改更新间隔
     template_data['learner'] = "doe_ia2c_learner"  # 修改学习器
     template_data['entropy_coef'] = 0.01  # 修改熵系数
     template_data['use_rnn'] = True  # 使用 RNN
-    template_data['critic_type'] = "ac_critic"  # 修改评论家类型
-    template_data['name'] = "doe_ia2c"  # 修改名称
+    # template_data['critic_type'] = "ac_critic"  # 修改评论家类型
+    template_data['critic_type'] = "ac_critic_ns"  # 使用ns critic
+    template_data['name'] = "doe_ia2c_ns"  # 使用ns
 
     # 11111111111指定 merge 以后的 full team doe cls 存储名称
     # 0505更正：这里指定的是合并doe cls以后存储的文件，用于实验开始时load
@@ -622,7 +624,7 @@ if __name__ == "__main__":
 
     response_id = 0
     layer = 2  # 这个layer对应的是child_layer
-    merge_layer = layer-1
+    merge_layer = layer-1   # 似乎没用到target选项
 
     # group_id = 6
     merge_group_id = 5
@@ -632,68 +634,68 @@ if __name__ == "__main__":
     n_agents = 1
     merge_n_agents = 2
     suffix = "_GPT"
-    alg_cfg = "ia2c"
+    alg_cfg = "ia2c_ns"   # 之前用ia2c，替换成non sharing
     task_env = "gfootball"
     rl_runs = []
-    Time = "0506_ia2c_test_3"
+    Time = "0510_ia2c_ns"
 
-    TIMEOUT = 30
+    TIMEOUT = 300
     # 如果是最底层，不用doe
     
-    # # 为了debug，暂时关掉
-    # for group_id in child_group_id:
-    #     logging.info(
-    #         f"Training for Decomposition {response_id} Layer{layer} Group{group_id} ")
-    #     # Create Task YAML file
-    #     create_task(CONFIG_ENVS_DIR, task_env, layer, response_id, response_r_id, n_agents,
-    #                 group_id, iter=0, suffix=suffix)
-    #     create_train_cfg(CONFIG_ALGS_DIR, Time, alg_cfg, layer, response_id, response_r_id,
-    #                     n_agents, group_id, iter=0)
-    #
-    #     # Execute the python file with flags
-    #     rl_filepath = f"{OUTPUT_DIR}/gfootball{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}.txt"
-    #
-    #
-    #     with open(rl_filepath, 'w') as f:
-    #         script_path = f'{SRC_DIR}/main.py'
-    #         params = [
-    #             'python', '-u', script_path,
-    #             f'--config={alg_cfg}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
-    #             f'--env-config={task_env}{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
-    #         ]
-    #         # import sys
-    #         # sys.path.append('/data/qiaodan/projects/GRF_SUBTASK/gfootball')
-    #         # 底层任务需要修改这个Popen
-    #         # process = subprocess.Popen(params)
-    #         process = subprocess.Popen(params, stdout=f, stderr=f)
-    #
-    #         # 获取文件的初始修改时间
-    #         while True:
-    #             initial_mtime = os.path.getmtime(rl_filepath)
-    #             initial_mtime = datetime.datetime.fromtimestamp(initial_mtime)  # 时间转为datetime格式
-    #             start_time = datetime.datetime.now()
-    #             delta_time = start_time - initial_mtime  # 时间差
-    #             delta_seconds = delta_time.total_seconds()  # 时间差转成秒
-    #             if delta_seconds > TIMEOUT:  # 如果文件更新时间大于30秒，重新启动程序
-    #                 print(
-    #                     f"Overtime：It seems that the training is stuck or finished, subprocess terminates")
-    #                 process.kill()  # 终止子进程
-    #                 break
-    #             # while process.poll() is None:  # 检查子进程是否还在运行
-    #             #     # 检查文件的最后修改时间
-    #             #     current_mtime = os.path.getmtime(rl_filepath)
-    #             #     # 如果文件超过了 1 分钟没有更新
-    #             #     if current_mtime == initial_mtime and (time.time() - start_time) > TIMEOUT:
-    #             #         print(f"Overtime：It seems that the training is stuck, subprocess terminates")
-    #             #         process.terminate()  # 终止子进程
-    #             #         break
-    #             # 等待一段时间后再检查
-    #             time.sleep(1)
-    #
-    #         process.wait()
-    #     # Modified the check of successful training
-    #     # block_until_training(rl_filepath, log_status=True, iter_num=iter, response_id=response_id)
-    #     rl_runs.append(process)
+    # 为了debug，暂时关掉
+    for group_id in child_group_id:
+        logging.info(
+            f"Training for Decomposition {response_id} Layer{layer} Group{group_id} ")
+        # Create Task YAML file
+        create_task(CONFIG_ENVS_DIR, task_env, layer, response_id, response_r_id, n_agents,
+                    group_id, iter=0, suffix=suffix)
+        create_train_cfg(CONFIG_ALGS_DIR, Time, alg_cfg, layer, response_id, response_r_id,
+                        n_agents, group_id, iter=0)
+    
+        # Execute the python file with flags
+        rl_filepath = f"{OUTPUT_DIR}/gfootball{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}.txt"
+    
+    
+        with open(rl_filepath, 'w') as f:
+            script_path = f'{SRC_DIR}/main.py'
+            params = [
+                'python', '-u', script_path,
+                f'--config={alg_cfg}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
+                f'--env-config={task_env}{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}',
+            ]
+            # import sys
+            # sys.path.append('/data/qiaodan/projects/GRF_SUBTASK/gfootball')
+            # 底层任务需要修改这个Popen
+            # process = subprocess.Popen(params)
+            process = subprocess.Popen(params, stdout=f, stderr=f)
+    
+            # 获取文件的初始修改时间
+            while True:
+                initial_mtime = os.path.getmtime(rl_filepath)
+                initial_mtime = datetime.datetime.fromtimestamp(initial_mtime)  # 时间转为datetime格式
+                start_time = datetime.datetime.now()
+                delta_time = start_time - initial_mtime  # 时间差
+                delta_seconds = delta_time.total_seconds()  # 时间差转成秒
+                if delta_seconds > TIMEOUT:  # 如果文件更新时间大于30秒，重新启动程序
+                    print(
+                        f"Overtime：It seems that the training is stuck or finished, subprocess terminates")
+                    process.kill()  # 终止子进程
+                    break
+                # while process.poll() is None:  # 检查子进程是否还在运行
+                #     # 检查文件的最后修改时间
+                #     current_mtime = os.path.getmtime(rl_filepath)
+                #     # 如果文件超过了 1 分钟没有更新
+                #     if current_mtime == initial_mtime and (time.time() - start_time) > TIMEOUT:
+                #         print(f"Overtime：It seems that the training is stuck, subprocess terminates")
+                #         process.terminate()  # 终止子进程
+                #         break
+                # 等待一段时间后再检查
+                time.sleep(1)
+    
+            process.wait()
+        # Modified the check of successful training
+        # block_until_training(rl_filepath, log_status=True, iter_num=iter, response_id=response_id)
+        rl_runs.append(process)
 
 
 

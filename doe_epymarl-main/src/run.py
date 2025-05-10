@@ -8,6 +8,7 @@ import threading
 from types import SimpleNamespace as SN
 
 import torch as th
+import copy
 
 from controllers import REGISTRY as mac_REGISTRY
 from components.episode_buffer import ReplayBuffer
@@ -187,33 +188,6 @@ def run_sequential(args, logger):
         learner.cuda()
     # 目前这个ckpt path为空，导致learner没有load model
     if args.checkpoint_path != "":
-<<<<<<< HEAD
-        timesteps = []
-        timestep_to_load = 0
-
-        if not os.path.isdir(args.checkpoint_path):
-            logger.console_logger.info(
-                "Checkpoint directiory {} doesn't exist".format(args.checkpoint_path)
-            )
-            return
-
-        # Go through all files in args.checkpoint_path
-        for name in os.listdir(args.checkpoint_path):
-            full_name = os.path.join(args.checkpoint_path, name)
-            # Check if they are dirs the names of which are numbers
-            if os.path.isdir(full_name) and name.isdigit():
-                timesteps.append(int(name))
-
-        if args.load_step == 0:
-            # choose the max timestep
-            timestep_to_load = max(timesteps)
-        else:
-            # choose the timestep closest to load_step
-            timestep_to_load = min(timesteps, key=lambda x: abs(x - args.load_step))
-        # !!!! 这个地方要改成加载的ckpt的路径和文件夹
-        model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
-    
-=======
         # timesteps = []
         # timestep_to_load = 0
         #
@@ -244,7 +218,6 @@ def run_sequential(args, logger):
         # runner.t_env = timestep_to_load
 
         model_path = args.checkpoint_path
->>>>>>> collaborator/main
         logger.console_logger.info("Loading model from {}".format(model_path))
         learner.load_models(model_path)
 
@@ -268,13 +241,8 @@ def run_sequential(args, logger):
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
-<<<<<<< HEAD
-    # 用于调试
-    args.t_max = 2000
-=======
     # # 用于调试
     # args.t_max = 2000
->>>>>>> collaborator/main
 
     while runner.t_env <= args.t_max:
         # Run for a whole episode at a time
@@ -366,7 +334,13 @@ def run_sequential(args, logger):
         # 将本stage的buffer存储名字传入 doe cls cfg，用于下面的新的cls训练
         args.doe_classifier_cfg["save_buffer_file_name"] = save_buffer_file_name
         save_buffer_file_path = os.path.join(layer_tmp_dir, save_buffer_file_name)
-        th.save(buffer.data, save_buffer_file_path)
+
+        buffer_data = copy.deepcopy(buffer.data)
+        """默认的ia2c_ns中，obs_agent_id为False，creat task中手动设置为True"""
+        if args.obs_agent_id:
+            buffer_data = process_buffer_for_doe(buffer_data, args.n_agents)
+
+        th.save(buffer_data, save_buffer_file_path)
         logger.console_logger.info(f"Save buffer to {layer_tmp_dir} for DoE Classifier")
         # 目前在from config train中，写死的buffer名字为 load bufferpath+buffer.pt，需要改命名
 
@@ -414,3 +388,16 @@ def args_sanity_check(config, _log):
         ) * config["batch_size_run"]
 
     return config
+
+
+# 剔除obs末尾的onehot编码，用于doe cls训练
+def process_buffer_for_doe(buffer_data, total_agents=5):
+    """处理buffer数据，去除onehot部分"""
+    obs_data = buffer_data.transition_data["obs"]
+    # 固定长度onehot
+    fixed_len  = total_agents
+    assert obs_data.shape[-1] > 115
+    obs_without_onehot = obs_data[..., :-fixed_len]
+    buffer_data.transition_data["obs"] = obs_without_onehot
+    return buffer_data
+

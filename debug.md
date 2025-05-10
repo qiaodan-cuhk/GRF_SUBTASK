@@ -1,3 +1,70 @@
+#### 固定全局onehot的训练逻辑（不采用）
+
+根据整体target task的agent num，固定one-hot长度，分配给每个agent对应的one-hot编码
+创建一个onehot-dict存储到config中：
+如 5v5，A 10000，B 01000，C 00100，D 00010，E 00001
+该 id 编码全程不随子团队变化而改变，保持固定，避免子团队的onehot重新分配，便于doe cls训练稳定
+
+
+    
+首先合并child group信息，得到target task（当前任务）的role_ids和num agents
+生成本layer的config（考虑用create task替换）
+读取child group的doe cls，合并得到新的doe cls，存储在 merged_doe_name，用于rl训练开始时加载给mac learner。这个doe cls的label直接load from pt，用于训练过程的参数控制。
+比如从 group 6 加载了 AB，group 7 加载了 CDE
+那么其加载、合并、存储的doe cls为 [6 6 7 7 7]，输入 obs 的 onehot id 保持不变
+rl训练结束后需要用当前训练group id 5进行doe cls训练，得到 [5 5 5 5 5]的doe cls用于下一层
+
+但是如何处理agent id映射？因为每次merge team的时候，agent的排序和组合都是随机的
+
+执行run.py
+    修改ckpt path不为""，以在训练初期 learner.load init team policy
+    加载 merged doe name 这个cls，利用load模式的from config
+    进行训练
+    训练结束后存储buffer到本层folder
+    todo：更改role_ids的list命名
+    读取buffer进行新的cls训练，利用train模式的from config，存储为 save doe name，用于下一阶段训练
+    存储final policy ckpt 到文件夹路径
+
+
+
+todo：读取child group的policy pth，合并得到新的policy并存储到本target task下作为init policy
+
+
+#### doe cls 剔除onehot的训练逻辑（采用）
+
+具体修改：
+1. run.py 添加process buffer for doe函数，剔除末尾args.agent_nums长度的onehot编码
+2. non_shared_controller中 build inputs函数改为从config.total_agents设置onehot长度，该参数根据最后的target task设置，onehot编码根据当前agent nums创建。
+3. 是否需要确定mlp class的input dim？
+
+
+根据整体target task的agent num，固定one-hot长度，根据当前子任务的agent num，动态分配 onehot id，如subtask 5只需要3个agent，全局5 agents，那么训练该层子任务时只分配 10000 01000 00100。doe cls不包括agent id onehot，只根据obs预测label，灵活可调整。
+
+    
+首先合并child group信息，得到target task（当前任务）的role_ids和num agents
+生成本layer的config（考虑用create task替换）
+
+
+读取child group的doe cls，合并得到新的doe cls，存储在 merged_doe_name，用于rl训练开始时加载给mac learner。这个doe cls的label直接load from pt，用于训练过程的参数控制。加载的过程中，根据subtask存储的顺序进行merge，保证agent policy与doe cls是同一个agent。（设计assert判断）
+
+
+比如从 group 6 加载了 AB，group 7 加载了 CDE，merge顺序为 [7, 6]，那么doe也对应的concate mlps [7 ckpt, 6 ckpt]，保证一致，也就是【CDE AB】，doe是【777 66】，不区分每层subtask中每个agent的具体任务。
+
+rl训练结束后保存buffer用于doe cls训练，添加func剔除buffer obs中的onehot编码，保证训练doe cls只根据obs。
+
+执行run.py
+    修改ckpt path不为""，以在训练初期 learner.load init team policy
+    加载 merged doe name 这个cls，利用load模式的from config
+    进行训练
+    训练结束后存储buffer到本层folder
+    todo：更改role_ids的list命名
+    读取buffer进行新的cls训练，利用train模式的from config，存储为 save doe name，用于下一阶段训练
+    存储final policy ckpt 到文件夹路径
+
+
+
+todo：读取child group的policy pth，合并得到新的policy并存储到本target task下作为init policy
+
 
 #### 1. 地图路径问题
 ```from gfootball import``` 直接导向了```anaconda/lib/gfootball```，所以把scenarios文件复制过去就好了，只出现在dan的server上
@@ -35,14 +102,11 @@ run.py line 237
 
 新增一个指定500000变为2000 steps
 
-<<<<<<< HEAD
-=======
 #### 7. load actor/critic_init.th的改动
 注意这里merge的policy是将子任务的参数平均，得到的共享参数，除非修改doe_controller，但那又涉及到role assignment的问题
 
 #### 8. 固定长度one-hot的改动
 ac.py line50, basic controller.py line89, doe_controller.py line115
->>>>>>> collaborator/main
 
 #### TODO
 
