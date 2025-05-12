@@ -500,6 +500,7 @@ def train_merge_team(groups,
         "sample_id": sample_id,
         #################################################
         "use_doe": True,
+        "obs_agent_id": True,
         "time_stamp": Time,
         "doe_type": "mlp",
         "ent_coef": 1.0,
@@ -549,7 +550,11 @@ def train_merge_team(groups,
     merge_doe_cls(groups, team_structure["total_members"], role_list, buffer_dir, merged_doe_name,
                   max_reward_code_path_for_each_group)
 
-    merge_policy(groups, buffer_dir)
+
+    # merge policy 需要根据non param share适配，在rnn_ns_agent.py中
+    # self.agents = th.nn.ModuleList([RNNAgent(input_shape, args) for _ in range(self.n_agents)])
+    # 以这种list形式调用rnnagent创建list，所以只需要append再存储成一个actor就行
+    # merge_policy(groups, buffer_dir)
 
     # 还有一个问题是，在run里面有一个load model，但是那个只是load整个任务全部团队的？似乎需要在这里新增一个merge policy，
     # 合并存储为一个新的policy，命名为 init_team_policy.pth，训练结束后存储的是另外的，这样互不干涉
@@ -637,9 +642,9 @@ if __name__ == "__main__":
     alg_cfg = "ia2c_ns"   # 之前用ia2c，替换成non sharing
     task_env = "gfootball"
     rl_runs = []
-    Time = "0510_ia2c_ns"
-
-    TIMEOUT = 300
+    Time = "0512_ia2c_ns"
+    
+    TIMEOUT = 30
     # 如果是最底层，不用doe
     
     # 为了debug，暂时关掉
@@ -649,8 +654,10 @@ if __name__ == "__main__":
         # Create Task YAML file
         create_task(CONFIG_ENVS_DIR, task_env, layer, response_id, response_r_id, n_agents,
                     group_id, iter=0, suffix=suffix)
+        
+        # 首层训练不用带doe，添加额外参数
         create_train_cfg(CONFIG_ALGS_DIR, Time, alg_cfg, layer, response_id, response_r_id,
-                        n_agents, group_id, iter=0)
+                        n_agents, group_id, iter=0, init_layer=True)
     
         # Execute the python file with flags
         rl_filepath = f"{OUTPUT_DIR}/gfootball{suffix}_layer{layer}_decomposition{response_id}_subtask{group_id}_iter{0}_sample{response_r_id}.txt"

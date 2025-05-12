@@ -336,9 +336,9 @@ def run_sequential(args, logger):
         save_buffer_file_path = os.path.join(layer_tmp_dir, save_buffer_file_name)
 
         buffer_data = copy.deepcopy(buffer.data)
-        """默认的ia2c_ns中，obs_agent_id为False，creat task中手动设置为True"""
-        if args.obs_agent_id:
-            buffer_data = process_buffer_for_doe(buffer_data, args.n_agents)
+        # """默认的ia2c_ns中，obs_agent_id为False，creat task中手动设置为True"""
+        # if args.obs_agent_id:
+        #     buffer_data = process_buffer_for_doe(buffer_data, args.n_agents)
 
         th.save(buffer_data, save_buffer_file_path)
         logger.console_logger.info(f"Save buffer to {layer_tmp_dir} for DoE Classifier")
@@ -389,7 +389,7 @@ def args_sanity_check(config, _log):
 
     return config
 
-
+# 更新:由于runner的逻辑，buffer中不包含onehot，只在select action环节通过build input创建临时onehot，不需要剔除
 # 剔除obs末尾的onehot编码，用于doe cls训练
 def process_buffer_for_doe(buffer_data, total_agents=5):
     """处理buffer数据，去除onehot部分"""

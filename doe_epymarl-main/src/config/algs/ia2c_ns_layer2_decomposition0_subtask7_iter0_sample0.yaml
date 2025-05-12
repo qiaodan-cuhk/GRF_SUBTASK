@@ -2,13 +2,15 @@ action_selector: soft_policies
 agent: rnn_ns
 agent_output_type: pi_logits
 batch_size: 10
-batch_size_run: 10
+batch_size_run: 1
 buffer_size: 10
 critic_type: ac_critic_ns
 decomposition_id: 0
 doe_classifier_cfg:
   doe_type: mlp
-  layer_tmp_dir: /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0510_ia2c_ns/decomposition0/group7
+  layer_tmp_dir: /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0512_ia2c_ns/decomposition0/group7
+  load_doe_buffer_path: GRF_SUBTASK/doe_epymarl-main/results/buffer/grf
+  load_doe_name: load_mlp_classifier.pt
   load_mode: train
   mlp:
     batch_size: 512
@@ -17,7 +19,7 @@ doe_classifier_cfg:
     learning_rate: 0.01
     test_fraction: 0.1
   role_ids:
-    task:
+    goal_7:
     - 0
   save_classifier: true
   save_doe_name: cls_layer2_decomposition0_subtask7_iter0_sample0.pt
@@ -41,8 +43,8 @@ save_buffer: true
 save_doe_cls: true
 standardise_returns: false
 standardise_rewards: true
-t_max: 20050000
+t_max: 2000
 target_update_interval_or_tau: 200
-time_stamp: 0510_ia2c_ns
+time_stamp: 0512_ia2c_ns
 use_doe: false
 use_rnn: false

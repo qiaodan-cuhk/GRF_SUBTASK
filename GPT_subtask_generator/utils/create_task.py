@@ -43,7 +43,7 @@ def create_task(root_dir, task, layer, response_id, response_r_id, num_agents, g
     #     yaml.safe_dump(data, new_yamlfile)
 
 
-def create_train_cfg(root_dir, Time, algs_name, layer, response_id, response_r_id, num_agents, group_id, iter):
+def create_train_cfg(root_dir, Time, algs_name, layer, response_id, response_r_id, num_agents, group_id, iter, init_layer=False):
     """
     root_dir: dir - 读取/存储 alg config 路径  '/data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/src/config/algs'
     Time: str - 指定的参数，如 0504
@@ -65,7 +65,7 @@ def create_train_cfg(root_dir, Time, algs_name, layer, response_id, response_r_i
     # 添加基本训练参数（如果模版不存在）
     base_params = {
         "hidden_dim": 128,
-        "obs_agent_id": True,
+        "obs_agent_id": True, # 开启onehot
         "use_rnn": True,
         "use_doe": True,  # 确保DOE功能开启
         "save_buffer": True,
@@ -82,13 +82,22 @@ def create_train_cfg(root_dir, Time, algs_name, layer, response_id, response_r_i
     data["iter_id"] = iter
     data["sample_id"] = response_r_id
     data["time_stamp"] = Time
-    data['mac'] = "non_shared_doe_mac"  # 使用ns doe mac
 
-    # 需要删掉
+    # 首层训练不用带doe
+    # 这个不好指定，因为第一层初始化时，没有doe cls，load doe buffer和load doe name都是随便指定的，没有文件
+    if not init_layer:
+        data["use_doe"] = True  
+        data['mac'] = "non_shared_doe_mac"  # 使用ns doe mac
+    else:
+        data["use_doe"] = False
+        data['mac'] = "non_shared_mac"  # 使用ns mac
+
+    
+
+    # 测试加速debug用，正式训练需要删掉
     data["t_max"] = 2000
-    data["obs_agent_id"] = True
-    data["use_doe"] = True
-
+    data["batch_size_run"] = 1
+    
     # 确保存在doe_classifier_cfg并设置其必需参数
     if "doe_classifier_cfg" not in data:
         data["doe_classifier_cfg"] = {}

@@ -69,8 +69,17 @@ class NonSharedMAC:
                 inputs.append(th.zeros_like(batch["actions_onehot"][:, t]))
             else:
                 inputs.append(batch["actions_onehot"][:, t-1])
+
+        # 固定长度 one-hot，考虑从args中直接读取对应的agent id和onehot编码？
         if self.args.obs_agent_id:
-            inputs.append(th.eye(self.n_agents, device=batch.device).unsqueeze(0).expand(bs, -1, -1))
+            fixed_len  = getattr(self.args, "total_agents", 5)  # 默认值5，可在config中设置
+            eye_matrix = th.zeros(self.n_agents, fixed_len, device=batch.device)
+            eye_matrix[:, :self.n_agents] = th.eye(self.n_agents, device=batch.device)
+            inputs.append(eye_matrix.unsqueeze(0).expand(bs, -1, -1))  # shape: (bs, n_agents, fixed_len)
+
+
+        # if self.args.obs_agent_id:
+        #     inputs.append(th.eye(self.n_agents, device=batch.device).unsqueeze(0).expand(bs, -1, -1))
 
         inputs = th.cat([x.reshape(bs*self.n_agents, -1) for x in inputs], dim=1)
         return inputs
@@ -79,6 +88,9 @@ class NonSharedMAC:
         input_shape = scheme["obs"]["vshape"]
         if self.args.obs_last_action:
             input_shape += scheme["actions_onehot"]["vshape"][0]
+        # if self.args.obs_agent_id:
+        #     input_shape += self.n_agents
         if self.args.obs_agent_id:
-            input_shape += self.n_agents
+            fixed_len  = getattr(self.args, "total_agents", 5)  # 默认值5，可在config中设置
+            input_shape += fixed_len
         return input_shape

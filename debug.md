@@ -120,7 +120,7 @@ line 215 目前并未成功load policy
 final policy用于在下一层target task训练时load，组合成init policy
 
 
-
+#### 已经解决
 doe的label和agent id要小心点，比如subtask 7 和 8 的合并顺序？
 两个team都是0-N
 
@@ -128,3 +128,140 @@ doe的label和agent id要小心点，比如subtask 7 和 8 的合并顺序？
 
 
 注意doe需要检查，预测的state对应label判断条件换成是否等于当前group id，因为train时候的label 替换成了group id为准，load doe时直接加载classifier nn params
+
+
+#### obs onehot的处理和相关process逻辑
+关于 obs agent id
+可以启动onehot编码，目前已经修改non shared （doe）controller的get input shape逻辑，会按照预定的target team的agent nums设置固定长度onehot，避免子团队动态变化带来干扰。
+例子，训练5v5，obs dim=115，fixed onehot length=5，controller中的input shape=120 用于build agents，也就是actor网络的输入维度是120
+
+然而，buffer的创建，其obs dim是根据scheme创建的，scheme读取环境设置的obs dim固定不变（也就是115），导致得到的buffer obs.shape = [1, 151, 1, 115] 分别代表 bs，episode length+1，agent num，obs shape。这导致save episode和sample episode的数据实际上只有环境真实obs，没有onehot id，（目前不知道是否会把mac传入learner后动态构建onehot），训练这里的agent输入维度很奇怪
+
+episode data.transition data
+episode_batch.data.transition_data['state'].shape
+torch.Size([1, 151, 115])
+episode_batch.data.transition_data['obs'].shape
+torch.Size([1, 151, 1, 115])
+
+
+
+pisode_sample.data.transition_data['state'].shape
+torch.Size([10, 151, 115])
+episode_sample.data.transition_data['obs'].shape
+torch.Size([10, 151, 1, 115])
+
+
+mac.build inputs 没问题
+tensor([[-1.0110, -0.0000,  0.0000,  0.0203,  0.0000, -0.0203, -0.1011, -0.1016,
+         -0.1011,  0.1016,  0.0000, -0.0000,  0.0000, -0.0000,  0.0000, -0.0000,
+          0.0000, -0.0000,  0.0000, -0.0000,  1.0110,  0.0000,  0.0404, -0.0407,
+          0.0404,  0.0407,  0.1011,  0.1016,  0.1011, -0.1016, -0.0000,  0.0000,
+         -0.0000,  0.0000, -0.0000,  0.0000, -0.0000,  0.0000, -0.0000,  0.0000,
+         -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000,
+         -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000,
+         -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000,
+         -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000,
+         -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000,
+         -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000, -1.0000,
+          0.0000, -0.0000,  0.1106, -0.0000,  0.0000,  0.0062,  1.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,  0.0000,  0.0000]],
+       device='cuda:0')
+inputs.shape
+torch.Size([1, 120])
+agent_inputs.shape
+torch.Size([1, 120])
+
+
+def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
+        # Only select actions for the selected batch elements in bs
+        avail_actions = ep_batch["avail_actions"][:, t_ep]
+        agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
+        chosen_actions = self.action_selector.select_action(agent_outputs[bs], avail_actions[bs], t_env, test_mode=test_mode)
+        return chosen_actions
+
+这个环节中ep_batch的obs数据还是115，forward时会build input添加onehot用于策略执行，所以policy是根据动态onehot来的（这里可能会有些小影响，暂时忽略吧）
+
+这直接导致最终存储的buffer，obs shape=115，无需剔除onehot id用于doe cls训练。
+
+#### 终端日志：训练合并后的subtask5
+参数正常，唯一问题是actor policy的merge和load
+
+ 'test_fraction': 0.1},
+                              'role_ids': {   'goal_6': [   0],
+                                              'goal_7': [   1]},
+                              'save_classifier': True,
+                              'save_doe_name': 'cls_layer1_decomposition0_subtask5_iter0_sample0.pt'},
+    'doe_type': 'mlp',
+    'ent_coef': 1.0,
+    'entropy_coef': 0.01,
+    'env': 'gfootball',
+    'env_args': {   'map_name': 'scenario_layer1_decomposition0_subtask5',
+                    'num_agents': 2,
+                    'representation': 'simple115',
+                    'rewards': 'scoring, '
+                               'reward_test',
+                    'seed': 465704813,
+                    'time_limit': 150},
+    'evaluate': False,
+    'gamma': 0.99,
+    'grad_norm_clip': 10,
+    'group_id': 5,
+    'hidden_dim': 64,
+    'hypergroup': None,
+    'iter_id': 0,
+    'label': 'default_label',
+    'layer_id': 1,
+    'learner': 'doe_ia2c_learner',
+    'learner_log_interval': 10000,
+    'load_step': 0,
+    'local_results_path': 'results',
+    'log_interval': 10000,
+    'lr': 0.0005,
+    'mac': 'non_shared_doe_mac',
+    'mask_before_softmax': True,
+    'name': 'doe_ia2c_ns',
+    'obs_agent_id': True,
+    'obs_individual_obs': False,
+    'obs_last_action': False,
+    'optim_alpha': 0.99,
+    'optim_eps': 1e-05,
+    'q_nstep': 5,
+    'render': False,
+    'repeat_id': 1,
+    'reward_scalarisation': 'sum',
+    'runner': 'parallel',
+    'runner_log_interval': 10000,
+    'sample_id': 0,
+    'save_buffer': True,
+    'save_doe_cls': True,
+    'save_model': True,
+    'save_model_interval': 1000,
+    'save_replay': False,
+    'seed': 465704813,
+    'standardise_returns': False,
+    'standardise_rewards': True,
+    't_max': 20050000,
+    'target_update_interval_or_tau': 0.01,
+    'test_greedy': True,
+    'test_interval': 10000,
+    'test_nepisode': 30,
+    'time_stamp': '0512_ia2c_ns',
+    'use_cuda': True,
+    'use_doe': True,
+    'use_rnn': True,
+    'use_tensorboard': True,
+    'use_wandb': False,
+    'wandb_mode': 'offline',
+    'wandb_project': None,
+    'wandb_save_model': False,
+    'wandb_team': None}
+
+[INFO 01:01:43] my_main *******************
+[INFO 01:01:43] my_main Tensorboard logging dir:
+[INFO 01:01:43] my_main /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/tb_logs/0512_ia2c_ns/layer1_decomposition0_subtask5_iter0_sample0
+[INFO 01:01:43] my_main *******************
+NNNNNN 2
+DoE_classifier is set to mac and learner
+[INFO 01:01:45] my_main Loading model from /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0512_ia2c_ns/decomposition0/group5
