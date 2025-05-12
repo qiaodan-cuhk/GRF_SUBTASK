@@ -265,3 +265,10 @@ def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False)
 NNNNNN 2
 DoE_classifier is set to mac and learner
 [INFO 01:01:45] my_main Loading model from /data/qiaodan/projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0512_ia2c_ns/decomposition0/group5
+
+
+#### Merge Actor Policy 建议
+merge policy 需要根据non param share适配，在rnn_ns_agent.py中
+self.agents = th.nn.ModuleList([RNNAgent(input_shape, args) for _ in range(self.n_agents)])
+以这种list形式调用rnnagent创建list，所以只需要append再存储成一个actor。pth用于load就行
+可能需要注意的：rnn_ns_agent的load逻辑是按照list还是key
