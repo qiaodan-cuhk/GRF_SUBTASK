@@ -25,7 +25,6 @@ doe_classifier_cfg:
   save_doe_name: cls_layer2_decomposition0_subtask7_iter0_sample0.pt
 entropy_coef: 0.001
 group_id: 7
-hidden_dim: 128
 iter_id: 0
 layer_id: 2
 learner: actor_critic_learner
@@ -33,7 +32,7 @@ lr: 0.0005
 mac: non_shared_mac
 mask_before_softmax: true
 name: ia2c_ns
-obs_agent_id: false
+obs_agent_id: true
 obs_individual_obs: false
 obs_last_action: false
 q_nstep: 5
@@ -47,4 +46,4 @@ t_max: 2000
 target_update_interval_or_tau: 200
 time_stamp: 0512_ia2c_ns
 use_doe: false
-use_rnn: false
+use_rnn: true

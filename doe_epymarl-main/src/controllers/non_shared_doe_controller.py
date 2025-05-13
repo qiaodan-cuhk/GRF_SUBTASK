@@ -10,7 +10,8 @@ from .non_shared_controller import NonSharedMAC
 
 class DoENonSharedMAC(NonSharedMAC):
     def __init__(self, scheme, groups, args):
-        super(DoENonSharedMAC, self).__init__(scheme, groups, args)
+        # super(NonSharedMAC, self).__init__(scheme, groups, args)
+        super().__init__(scheme, groups, args)
         # add doe classifier
         self.ent_coef = 1.0 
         

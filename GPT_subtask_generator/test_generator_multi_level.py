@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import datetime
+from collections import defaultdict, OrderedDict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -175,121 +176,33 @@ def merge_doe_cls(groups, n_agents, role_list, doe_path, merge_doe_name, max_rew
     assert merge_id == n_agents
     torch.save(merged_classifier, os.path.join(doe_path, f"{merge_doe_name}.pt"))
 
-# # 接下来merge policy
-# # 本版本先不考虑load policy问题，优点复杂，涉及到mac和runner
-# def merge_policy(groups, n_agents, role_list, doe_path, merge_doe_name, max_reward_code_path_for_each_group):
-#     """
-#     Func:
-#     加载并合并所有groups的doe classifier为一个新的doe cls
-#
-#     Params:
-#     groups: dict - 提供分组id
-#     n_agents: int - 合并后团队总 agents 数量
-#     role_list: list - 合并后任务分工 # [0, 0, 1, 1, 2]
-#     doe_path: dir - 存储路径  # f'GRF_SUBTASK/doe_epymarl-main/results/gfootball/Time/decomposition0/group0'
-#     merge_doe_name: dir - 存储合并后doe cls路径 # f"doe_'template_config_name'_layer'layer'_decomposition'decompose_id'_subtask{group_id}_iter{iter_id}_sample{sample_id}_merged"
-#     max_reward_code_path_for_each_group: dir - 替换py为pt，指定load上一层的doe cls
-#
-#     Outputs:
-#     合并后的 doe cls file: f'{doe_path}/{merge_doe_name}.pt')
-#     """
-#
-#     merged_classifier = None
-#     merge_id = 0
-#
-#     # 创建team policy
-#     merged_actor = []
-#     merged_critic = []
-#
-#     for group in groups:
-#         group_id = group["group_number"] - 1
-#
-#         # 读取child group的model
-#         child_group_dir = os.path.join(os.path.dirname(doe_path), f"group{group}")
-#         actor_ckpt_name = "agent.th"
-#         critic_ckpt_name = "critic.th"
-#         actor_ckpt_path = os.path.join(child_group_dir, actor_ckpt_name)
-#         critic_ckpt_path = os.path.join(child_group_dir, critic_ckpt_name)
-#         # projects/GRF_SUBTASK/doe_epymarl-main/results/gfootball/0505_ia2c/decomposition0/group6/agent.th
-#
-#
-#         # 创建
-#         actor_i = torch.load(actor_ckpt_path)
-#         critic_i = torch.load(critic_ckpt_path)
-#
-#         merged_actor.append(actor_i)
-#         merged_critic.append(critic_i)
-#
-#
-#         # # 创建初始化一个 n agents merged cls，load cls 避免重新指定各种网络参数
-#         # if merged_classifier is None:
-#         #     # merged_classifier = doe_classifier_config_loader(n_agents, merge_cfg, doe_path, load_mode='merge')
-#         #     merged_classifier = copy.deepcopy(classifier_i)
-#         #     merged_classifier["n_agents"] = n_agents
-#         #     merged_classifier["role_list"] = role_list
-#         #
-#         #     # for key in vars(merged_classifier).keys():
-#         #     #     print(key)
-#         #
-#         #     # 扩展 lr 和 mlps 的数量，创建 n_agents list mlps
-#         #     merged_classifier["learning_rates"] = [merged_classifier["learning_rates"][0]] * n_agents
-#         #     merged_classifier["mlps"] = [merged_classifier["mlps"][0]] * n_agents
-#         #
-#         # # 加载历史分类器的参数到当前分类器id中
-#         # for doe_i in classifier_i["mlps"]:
-#         #     merged_classifier["mlps"][merge_id].load_state_dict(doe_i.state_dict())
-#         #     merge_id += 1
-#     # assert merge_id == n_agents
-#
-#     # 存储为 actor_init 和 critic_init 用于 run.py 的load policy
-#     torch.save(merged_actor, os.path.join(doe_path, "actor_init.th"))
-#     torch.save(merged_critic, os.path.join(doe_path, "critic_init.th"))
+def split_actors_by_agent(merged_actor):
+    """将 merged_actor 中的多个 OrderedDict 拆分为单 agent 的 OrderedDict"""
+    new_merged_actor = []
 
-# def merge_policy(groups, buffer_dir):
-#     """
-#     merge多个 group 的 actor/critic 模型，保存为列表形式，用于初始化medoe训练的策略。
-#     Params:
-#         groups: list of dicts, 每个包含 group_number, number_of_agents
-#         buffer_dir: str, 当前父task的路径
-#     """
-#     import torch
-#     import os
-#
-#     # 存储所有的actor和critic状态list
-#     merged_actor = []
-#     merged_critic = []
-#     n_total_agents = 0
-#
-#     for group in groups:
-#         group_id = group["group_number"] - 1
-#         group_path = os.path.join(os.path.dirname(buffer_dir), f"group{group_id}")
-#         n_total_agents += group["number_of_agents"]
-#         actor_path = os.path.join(group_path, "agent.th")
-#         critic_path = os.path.join(group_path, "critic.th")
-#
-#         if not os.path.exists(actor_path) or not os.path.exists(critic_path):
-#             raise FileNotFoundError(f"Missing actor or critic model in group{group_id}")
-#
-#         actor_model = torch.load(actor_path)
-#         critic_model = torch.load(critic_path)
-#
-#         merged_actor.append(actor_model)
-#         merged_critic.append(critic_model)
-#
-#     assert len(merged_actor) == n_total_agents
-#     # os.makedirs(merged_policy_dir, exist_ok=True)
-#     actor_save_path = os.path.join(buffer_dir, "actor_init.th")
-#     critic_save_path = os.path.join(buffer_dir, "critic_init.th")
-#
-#     torch.save(merged_actor, actor_save_path)
-#     torch.save(merged_critic, critic_save_path)
-#
-#     print(f"Merged actor saved to {actor_save_path}")
-#     print(f"Merged critic saved to {critic_save_path}")
+    # 遍历每个子任务的模型（每个模型是一个 OrderedDict）
+    for actor_model in merged_actor:
+        # 用 defaultdict 创建一个存储 agent 信息的字典
+        agents_dict = defaultdict(OrderedDict)
+
+        # 遍历当前模型中的所有键值对
+        for key, value in actor_model.items():
+            # 假设 key 的格式是 agents.n.some_property
+            if key.startswith('agents.') and '.' in key[7:]:  # 排除不符合 agents.n 格式的 key
+                agent_prefix = key.split('.')[1]  # 提取 'n'，例如 '0'、'1' 等
+                agents_dict[agent_prefix][key] = value  # 将键值对添加到对应的 agent 中
+            else:
+                print(f"Warning: Key '{key}' does not contain a valid agent prefix.")
+
+        # 将每个 agent 的 OrderedDict 添加到新的结果列表中
+        new_merged_actor.extend(agents_dict.values())
+
+    return new_merged_actor
+
 
 def merge_policy(groups, buffer_dir):
     """
-    merge多个 group 的 actor/critic 模型，平均策略参数
+    merge多个 group 的 actor/critic 模型，保存为列表形式，用于初始化medoe训练的策略。
     Params:
         groups: list of dicts, 每个包含 group_number, number_of_agents
         buffer_dir: str, 当前父task的路径
@@ -298,8 +211,8 @@ def merge_policy(groups, buffer_dir):
     import os
 
     # 存储所有的actor和critic状态list
-    actor_states = []
-    critic_states = []
+    merged_actor = []
+    merged_critic = []
     n_total_agents = 0
 
     for group in groups:
@@ -309,38 +222,83 @@ def merge_policy(groups, buffer_dir):
         actor_path = os.path.join(group_path, "agent.th")
         critic_path = os.path.join(group_path, "critic.th")
 
-
         if not os.path.exists(actor_path) or not os.path.exists(critic_path):
             raise FileNotFoundError(f"Missing actor or critic model in group{group_id}")
 
         actor_model = torch.load(actor_path)
         critic_model = torch.load(critic_path)
 
-        actor_states.append(actor_model)
-        critic_states.append(critic_model)
+        merged_actor.append(actor_model)
 
-    # assert len(merged_actor) == n_total_agents
+        for i in range(len(critic_model)):
+            merged_critic.append(critic_model[i])
+
+    merged_actor = split_actors_by_agent(merged_actor)
+    assert len(merged_actor) == n_total_agents
     # os.makedirs(merged_policy_dir, exist_ok=True)
-
-    def average_state_dicts(state_dicts):
-        avg_state = {}
-        for key in state_dicts[0]:
-            # print(f"Key: {key}, Shape: {state_dicts[0][key].shape}")
-            avg_state[key] = sum([sd[key] for sd in state_dicts]) / len(state_dicts)
-        return avg_state
-
-    # 合并 actor 和 critic 的 state dict
-    merged_actor_state = average_state_dicts(actor_states)
-    merged_critic_state = average_state_dicts(critic_states)
-
     actor_save_path = os.path.join(buffer_dir, "actor_init.th")
     critic_save_path = os.path.join(buffer_dir, "critic_init.th")
 
-    torch.save(merged_actor_state, actor_save_path)
-    torch.save(merged_critic_state, critic_save_path)
+    torch.save(merged_actor, actor_save_path)
+    torch.save(merged_critic, critic_save_path)
 
     print(f"Merged actor saved to {actor_save_path}")
     print(f"Merged critic saved to {critic_save_path}")
+
+# def merge_policy(groups, buffer_dir):
+#     """
+#     merge多个 group 的 actor/critic 模型，平均策略参数
+#     Params:
+#         groups: list of dicts, 每个包含 group_number, number_of_agents
+#         buffer_dir: str, 当前父task的路径
+#     """
+#     import torch
+#     import os
+
+#     # 存储所有的actor和critic状态list
+#     actor_states = []
+#     critic_states = []
+#     n_total_agents = 0
+
+#     for group in groups:
+#         group_id = group["group_number"] - 1
+#         group_path = os.path.join(os.path.dirname(buffer_dir), f"group{group_id}")
+#         n_total_agents += group["number_of_agents"]
+#         actor_path = os.path.join(group_path, "agent.th")
+#         critic_path = os.path.join(group_path, "critic.th")
+
+
+#         if not os.path.exists(actor_path) or not os.path.exists(critic_path):
+#             raise FileNotFoundError(f"Missing actor or critic model in group{group_id}")
+
+#         actor_model = torch.load(actor_path)
+#         critic_model = torch.load(critic_path)
+
+#         actor_states.append(actor_model)
+#         critic_states.append(critic_model)
+
+#     # assert len(merged_actor) == n_total_agents
+#     # os.makedirs(merged_policy_dir, exist_ok=True)
+
+#     def average_state_dicts(state_dicts):
+#         avg_state = {}
+#         for key in state_dicts[0]:
+#             # print(f"Key: {key}, Shape: {state_dicts[0][key].shape}")
+#             avg_state[key] = sum([sd[key] for sd in state_dicts]) / len(state_dicts)
+#         return avg_state
+
+#     # 合并 actor 和 critic 的 state dict
+#     merged_actor_state = average_state_dicts(actor_states)
+#     merged_critic_state = average_state_dicts(critic_states)
+
+#     actor_save_path = os.path.join(buffer_dir, "actor_init.th")
+#     critic_save_path = os.path.join(buffer_dir, "critic_init.th")
+
+#     torch.save(merged_actor_state, actor_save_path)
+#     torch.save(merged_critic_state, critic_save_path)
+
+#     print(f"Merged actor saved to {actor_save_path}")
+#     print(f"Merged critic saved to {critic_save_path}")
 
 # 从child folder提取cls和policy在本函数中处理，run中只读取当前layer的文件夹
 def train_merge_team(groups,
@@ -554,7 +512,7 @@ def train_merge_team(groups,
     # merge policy 需要根据non param share适配，在rnn_ns_agent.py中
     # self.agents = th.nn.ModuleList([RNNAgent(input_shape, args) for _ in range(self.n_agents)])
     # 以这种list形式调用rnnagent创建list，所以只需要append再存储成一个actor就行
-    # merge_policy(groups, buffer_dir)
+    merge_policy(groups, buffer_dir)
 
     # 还有一个问题是，在run里面有一个load model，但是那个只是load整个任务全部团队的？似乎需要在这里新增一个merge policy，
     # 合并存储为一个新的policy，命名为 init_team_policy.pth，训练结束后存储的是另外的，这样互不干涉
@@ -644,7 +602,7 @@ if __name__ == "__main__":
     rl_runs = []
     Time = "0512_ia2c_ns"
     
-    TIMEOUT = 30
+    TIMEOUT = 20
     # 如果是最底层，不用doe
     
     # 为了debug，暂时关掉
